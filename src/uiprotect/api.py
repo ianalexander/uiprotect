@@ -336,6 +336,7 @@ class BaseApiClient:
         )
         headers = kwargs.get("headers") or self.headers
         _LOGGER.debug("Request url: %s", request_url)
+        _LOGGER.debug("Request kwargs: %s", kwargs)
         if not self._verify_ssl:
             kwargs["ssl"] = False
         session = await self.get_session()
@@ -349,6 +350,7 @@ class BaseApiClient:
                     **kwargs,
                 )
                 response = await req_context.__aenter__()
+                _LOGGER.debug("Request response status code: %s", response.status)
 
                 await self._update_last_token_cookie(response)
                 if auto_close:
@@ -1563,6 +1565,10 @@ class ProtectApiClient(BaseApiClient):
             timeout=0,
             params=params,
         )
+        if(r.status == 500):
+          _LOGGER.warn('get_camera_video returned status code 500')
+        if(r.content_length == 0):
+          _LOGGER.warn('get_camera_video request returned content length 0')
         if output_file is not None:
             async with aiofiles.open(output_file, "wb") as output:
 
