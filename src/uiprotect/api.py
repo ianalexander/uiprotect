@@ -1510,6 +1510,7 @@ class ProtectApiClient(BaseApiClient):
         progress_callback: ProgressCallback | None = None,
         chunk_size: int = 65536,
         fps: int | None = None,
+        retry_timeout: int = RETRY_TIMEOUT,
     ) -> bytes | None:
         """
         Exports MP4 video from a given camera at a specific time.
@@ -1523,6 +1524,8 @@ class ProtectApiClient(BaseApiClient):
         Providing the `fps` parameter creates a "timelapse" export wtih the given FPS
         value. Protect app gives the options for 60x (fps=4), 120x (fps=8), 300x
         (fps=20), and 600x (fps=40).
+
+        This function will retry until it recieves a 200 status code, or times out.
         """
         if validate_channel_id and self._bootstrap is not None:
             camera = self._bootstrap.cameras[camera_id]
@@ -1558,17 +1561,25 @@ class ProtectApiClient(BaseApiClient):
                 raise_exception=False,
             )
 
-        r = await self.request(
-            "get",
-            f"{self.api_path}{path}",
-            auto_close=False,
-            timeout=0,
-            params=params,
-        )
-        if(r.status == 500):
-          _LOGGER.warn('get_camera_video returned status code 500')
-        if(r.content_length == 0):
-          _LOGGER.warn('get_camera_video request returned content length 0')
+        now = time.monotonic()
+        timeout = now + retry_timeout
+        status: int | None = None
+        r: aiohttp.ClientResponse
+        while status is not 200 and now <= timeout:
+            r = await self.request(
+                "get",
+                f"{self.api_path}{path}",
+                auto_close=False,
+                timeout=0,
+                params=params,
+            )
+            status = r.status
+
+            if status is not 200:
+                _LOGGER.warn('get_camera_video returned status code %s', status)
+                await asyncio.sleep(0.5)
+                now = time.monotonic()
+
         if output_file is not None:
             async with aiofiles.open(output_file, "wb") as output:
 
