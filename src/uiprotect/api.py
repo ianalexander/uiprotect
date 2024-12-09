@@ -1576,7 +1576,7 @@ class ProtectApiClient(BaseApiClient):
             status = r.status
 
             if status is not 200:
-                _LOGGER.warn('get_camera_video returned status code %s', status)
+                _LOGGER.warning('get_camera_video returned irregular status code %s', status)
                 await asyncio.sleep(0.5)
                 now = time.monotonic()
 
