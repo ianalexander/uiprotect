@@ -1580,6 +1580,9 @@ class ProtectApiClient(BaseApiClient):
                 await asyncio.sleep(0.5)
                 now = time.monotonic()
 
+        if status is not 200:
+            _LOGGER.warning('get_camera_video retry failed with status code %s', status)
+
         if output_file is not None:
             async with aiofiles.open(output_file, "wb") as output:
 
